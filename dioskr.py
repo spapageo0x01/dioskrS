@@ -6,9 +6,7 @@ import sys
 import argparse
 import os
 import hashlib
-import inspect
 from layer_block import BlockStore
-
 
 output_dir = "/mnt/shared_volume/dskrs_field"
 
@@ -18,7 +16,6 @@ def input_check(arg):
         raise argparse.ArgumentTypeError('Input file does not exist')
 
     return arg
-
 
 def block_check(arg):
     value = int(arg)
@@ -39,57 +36,22 @@ def init_vars():
 
     return args.input_file, args.block_size
 
-def main():
+if __name__ == "__main__":
     print '=======dioskrS v0.1========'
     input_file, block_size = init_vars()
 
-    file_size = os.stat(input_file).st_size
-    print 'file_size: %d' % file_size
-
-    #Should handle this later on.
-    if (file_size < block_size):
-        print 'File provided is smaller than the deduplication block size.'
-        sys.exit(0)
-
-    #file_fp = open(input_file, "rb") #alternate open, built-in, not direct!
-    try: 
-        file_fp = os.open(input_file, os.O_DIRECT | os.O_RDONLY)
-    except Exception as e:
-        frame = inspect.currentframe()
-        info = inspect.getframeinfo(frame)
-        print '\t[fopen: an %s exception occured | line: %d]' % (type(e).__name__, info.lineno)
-        sys.exit(0)
-
-    if not (os.path.isdir(output_dir)):
-        print 'Output directory "%s" does not exist. Will create..' % output_dir
-        os.makedirs(output_dir)
-
+    block_eng = BlockStore(input_file, block_size, output_dir)
 
     blocks_nr = 0
     while True:
-        #block = file_fp.read(block_size)
-        try: 
-            block = os.read(file_fp, block_size)
-            blocks_nr += 1
-            hash_object = hashlib.sha512(block)
-            hex_dig = hash_object.hexdigest()
-        except Exception as e:
-            frame = inspect.currentframe()
-            info = inspect.getframeinfo(frame)
-            print '\t[read: an %s exception occured | line: %d]' % (type(e).__name__, info.lineno)
-            break
-
-        #print"%d: %s" % (blocks_nr, hex_dig)
-
+        block = block_eng.get_sync()
+        blocks_nr += 1
+        hash_object = hashlib.sha512(block)
+        hex_dig = hash_object.hexdigest()
 
         if block == "":
             break
 
     print 'Finished reading file! Number of %d blocks: %d' % (block_size, blocks_nr)
-
-
-
-if __name__ == "__main__":
-	main()
 
 
